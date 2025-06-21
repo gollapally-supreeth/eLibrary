@@ -3,40 +3,40 @@
   "name": "elibrary",
   "builds": [
     {
-      "src": "elib/project/server.js",
+      "src": "server.js",
       "use": "@vercel/node"
     },
     {
-      "src": "elib/project/public/**",
+      "src": "public/**",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/elib/project/server.js"
-    },
-    {
+      "dest": "/server.js"
+    },    {
       "src": "/admin-dashboard",
-      "dest": "/elib/project/public/admin-dashboard.html"
+      "dest": "/public/admin-dashboard.html"
     },
     {
       "src": "/user-portal",
-      "dest": "/elib/project/public/user-portal.html"
+      "dest": "/public/user-portal.html"
     },
     {
       "src": "/login",
-      "dest": "/elib/project/public/login.html"
+      "dest": "/public/login.html"
     },
     {
       "src": "/landing",
-      "dest": "/elib/project/public/landing.html"
+      "dest": "/public/landing.html"
     },
     {
       "src": "/(.*)",
-      "dest": "/elib/project/public/landing.html"
+      "dest": "/server.js"
     }
-  ],  "env": {
+  ],
+  "env": {
     "NODE_ENV": "production"
   }
 }

@@ -1,4 +1,18 @@
 require('dotenv').config();
+
+// Debug: Check if dotenv loaded properly
+console.log('🔍 Environment Variables Debug:');
+console.log('- .env file loaded:', process.env.MONGODB_URI ? '✅' : '❌');
+console.log('- PORT:', process.env.PORT || 'using default');
+console.log('- NODE_ENV:', process.env.NODE_ENV || 'not set');
+
+// Validate critical environment variables
+if (!process.env.MONGODB_URI) {
+    console.error('❌ Critical Error: MONGODB_URI is missing from environment variables');
+    console.error('Please ensure your .env file exists and contains MONGODB_URI');
+    console.error('Current working directory:', process.cwd());
+    console.error('Environment variables loaded:', Object.keys(process.env).filter(key => key.includes('MONGO')));
+}
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -56,9 +70,25 @@ app.use((req, res, next) => {
 });
 
 // Connect to MongoDB Atlas
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('Connected to MongoDB'))
-    .catch((err) => console.error('MongoDB connection error:', err));
+console.log('Environment check:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('MONGODB_URI defined:', !!process.env.MONGODB_URI);
+console.log('MONGODB_URI (first 20 chars):', process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 20) + '...' : 'undefined');
+
+const mongoUri = process.env.MONGODB_URI;
+if (!mongoUri) {
+    console.error('❌ MONGODB_URI environment variable is not defined!');
+    console.error('Please check your .env file and ensure MONGODB_URI is set correctly.');
+    process.exit(1);
+}
+
+mongoose.connect(mongoUri)
+    .then(() => console.log('✅ Connected to MongoDB successfully'))
+    .catch((err) => {
+        console.error('❌ MongoDB connection error:', err);
+        console.error('Connection string (first 20 chars):', mongoUri.substring(0, 20) + '...');
+        process.exit(1);
+    });
 
 // Define Book Schema
 const bookSchema = new mongoose.Schema({

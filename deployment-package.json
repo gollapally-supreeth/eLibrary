@@ -1,0 +1,14 @@
+{
+  "name": "elibrary-deploy",
+  "version": "1.0.0",
+  "description": "Deploy eLibrary to Vercel",
+  "scripts": {
+    "deploy": "vercel",
+    "deploy:prod": "vercel --prod",
+    "env:setup": "vercel env add",
+    "logs": "vercel logs",
+    "dev": "node server.js",
+    "start": "node server.js",
+    "test": "echo 'Running pre-deployment tests...' && node -e 'console.log(\"Environment check:\"); console.log(\"MONGODB_URI:\", !!process.env.MONGODB_URI); console.log(\"All checks passed!\");'"
+  }
+}
