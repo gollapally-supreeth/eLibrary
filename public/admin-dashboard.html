@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eLibrary Admin Dashboard V2</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin-styles.css">
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-book-reader logo-icon"></i>
+                <h1 class="logo-text">eLibrary</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#dashboard" class="nav-link active" data-section="dashboard-overview"><i class="fas fa-tachometer-alt"></i><span>Overview</span></a></li>
+                    <li><a href="#users" class="nav-link" data-section="user-management"><i class="fas fa-users-cog"></i><span>Users</span></a></li>
+                    <li><a href="#books" class="nav-link" data-section="book-management"><i class="fas fa-book-open"></i><span>Books</span></a></li>
+                    <li><a href="#categories" class="nav-link" data-section="category-management"><i class="fas fa-tags"></i><span>Categories</span></a></li>
+                    <li><a href="#reports" class="nav-link" data-section="reports-analytics"><i class="fas fa-chart-pie"></i><span>Reports</span></a></li>
+                    <li><a href="#settings" class="nav-link" data-section="system-settings"><i class="fas fa-cogs"></i><span>Settings</span></a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="#" id="logoutButton" class="nav-link"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+            </div>
+        </aside>
+
+        <main class="main-content" id="mainContent">
+            <header class="main-header">
+                <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+                <div class="header-title" id="headerTitle">Overview</div>
+                <div class="header-actions">
+                    <div class="theme-switcher">
+                        <input type="checkbox" id="themeToggle" class="theme-toggle-checkbox">
+                        <label for="themeToggle" class="theme-toggle-label">
+                            <i class="fas fa-moon"></i>
+                            <i class="fas fa-sun"></i>
+                            <span class="ball"></span>
+                        </label>
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-content">
+                <!-- Dashboard Overview Section -->
+                <section id="dashboard-overview" class="content-section active">
+                    <h2>Dashboard Overview</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-users"></i></div>
+                            <div class="stat-info">
+                                <h4>Total Users</h4>
+                                <p id="totalUsersStat">0</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-book"></i></div>
+                            <div class="stat-info">
+                                <h4>Total Books</h4>
+                                <p id="totalBooksStat">0</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
+                            <div class="stat-info">
+                                <h4>Total Categories</h4>
+                                <p id="totalCategoriesStat">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="charts-grid">
+                        <div class="chart-container">
+                            <h3>New Users (Last 7 Days)</h3>
+                            <canvas id="newUsersChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Book Categories Distribution</h3>
+                            <canvas id="bookCategoriesChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- User Management Section -->
+                <section id="user-management" class="content-section">
+                    <div class="section-header">
+                        <h2>User Management</h2>
+                        <button class="btn btn-primary" id="addUserBtn"><i class="fas fa-plus"></i> Add User</button>
+                    </div>
+                    <div class="table-filters">
+                        <input type="text" id="userSearchInput" placeholder="Search users...">
+                        <select id="userRoleFilter">
+                            <option value="">All Roles</option>
+                            <option value="admin">Admin</option>
+                            <option value="user">User</option>
+                        </select>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Joined Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- User data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination-controls" id="usersPagination">
+                        <!-- Pagination will be here -->
+                    </div>
+                </section>
+
+                <!-- Book Management Section -->
+                <section id="book-management" class="content-section">
+                    <div class="section-header">
+                        <div class="section-title-group">
+                            <h2>Book Management</h2>
+                            <div class="section-stats">
+                                <span class="stat-item">
+                                    <i class="fas fa-book"></i>
+                                    <span id="totalBooksCount">0</span> Total Books
+                                </span>
+                                <span class="stat-item" id="filteredBooksContainer" style="display: none;">
+                                    <i class="fas fa-filter"></i>
+                                    <span id="filteredBooksCount">0</span> Filtered
+                                </span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="addBookBtn"><i class="fas fa-plus"></i> Add Book</button>
+                    </div>
+                     <div class="table-filters">
+                        <input type="text" id="bookSearchInput" placeholder="Search books by title, author...">
+                        <select id="bookCategoryFilter">
+                            <option value="">All Categories</option>
+                            <!-- Categories will be populated here -->
+                        </select>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="booksTable">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Author</th>
+                                    <th>Category</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Book data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                     <div class="pagination-controls" id="booksPagination">
+                        <!-- Pagination will be here -->
+                    </div>
+                </section>
+
+                <!-- Category Management Section -->
+                <section id="category-management" class="content-section">
+                    <div class="section-header">
+                        <h2>Category Management</h2>
+                        <button class="btn btn-primary" id="addCategoryBtn"><i class="fas fa-plus"></i> Add Category</button>
+                    </div>
+                    <div class="table-filters">
+                         <input type="text" id="categorySearchInput" placeholder="Search categories...">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="categoriesTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Book Count</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Category data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination-controls" id="categoriesPagination">
+                        <!-- Pagination will be here -->
+                    </div>
+                </section>
+
+                <!-- Reports & Analytics Section -->
+                <section id="reports-analytics" class="content-section">
+                    <h2>Reports & Analytics</h2>
+                    <!-- Add report generation options and display areas -->
+                </section>
+
+                <!-- System Settings Section -->
+                <section id="system-settings" class="content-section">
+                    <h2>System Settings</h2>
+                    <!-- Add various system settings options -->
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="formModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Modal Title</h3>
+                <button class="close-modal-btn" id="closeModalBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Form content will be injected here -->
+            </div>
+        </div>
+    </div>
+    
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="confirmModalTitle">Confirm Action</h3>
+                 <button class="close-modal-btn" data-target="confirmModal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmModalText">Are you sure?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="confirmModalCancelBtn">Cancel</button>
+                <button class="btn btn-danger" id="confirmModalConfirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification-toast" class="notification-toast">
+        <div class="toast-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="toast-message">Notification message</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
