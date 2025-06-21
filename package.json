@@ -10,11 +10,16 @@
     "vercel-build": "echo 'Vercel build completed'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["library", "books", "digital", "management"],
+  "keywords": [
+    "library",
+    "books",
+    "digital",
+    "management"
+  ],
   "author": "Supreeth Gollapally",
   "license": "MIT",
   "dependencies": {
-    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
