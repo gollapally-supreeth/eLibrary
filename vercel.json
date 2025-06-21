@@ -3,19 +3,20 @@
   "name": "elibrary",
   "builds": [
     {
-      "src": "server.js",
+      "src": "api/index.js",
       "use": "@vercel/node"
     },
     {
-      "src": "public/**",
+      "src": "public/**/*",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/server.js"
-    },    {
+      "dest": "/api/index.js"
+    },
+    {
       "src": "/admin-dashboard",
       "dest": "/public/admin-dashboard.html"
     },
@@ -32,10 +33,19 @@
       "dest": "/public/landing.html"
     },
     {
+      "src": "/",
+      "dest": "/public/landing.html"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/server.js"
+      "dest": "/public/$1"
     }
   ],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  },
   "env": {
     "NODE_ENV": "production"
   }
