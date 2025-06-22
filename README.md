@@ -1,10 +1,5 @@
 # 📚 eLibrary - Modern Digital Library Management System
 
-> **🚨 RECENT UPDATE**: Fixed Vercel 500 errors by implementing serverless architecture. See [VERCEL_500_ERROR_FIX.md](./VERCEL_500_ERROR_FIX.md) for details.
-
-A sophisticated, intelligent web application for managing and accessing digital books with a beautiful, modern interface and comprehensive user experience. Built with passion to transform how we interact with digital literature and make knowledge more accessible to everyone.
-
-![eLibrary Dashboard](https://img.shields.io/badge/Status-Active-brightgreen) ![Node.js](https://img.shields.io/badge/Node.js-18+-blue) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ## 🌟 Features
 
