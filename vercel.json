@@ -1,52 +1,9 @@
 {
   "version": 2,
-  "name": "elibrary",
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "public/**/*",
-      "use": "@vercel/static"
+      "source": "/(.*)",
+      "destination": "/server.js"
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
-    },
-    {
-      "src": "/admin-dashboard",
-      "dest": "/public/admin-dashboard.html"
-    },
-    {
-      "src": "/user-portal",
-      "dest": "/public/user-portal.html"
-    },
-    {
-      "src": "/login",
-      "dest": "/public/login.html"
-    },
-    {
-      "src": "/landing",
-      "dest": "/public/landing.html"
-    },
-    {
-      "src": "/",
-      "dest": "/public/landing.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
-    }
-  ],
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 30
-    }
-  },
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
