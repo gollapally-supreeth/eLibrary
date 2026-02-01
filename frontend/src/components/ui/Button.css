@@ -1,0 +1,98 @@
+.ui-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: all var(--duration-normal) var(--ease-premium);
+}
+
+.dark-theme .ui-card {
+    background: var(--surface-dark);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Variants */
+.ui-card--default {
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.dark-theme .ui-card--default {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ui-card--elevated {
+    box-shadow: var(--shadow-xl);
+}
+
+.ui-card--outlined {
+    border: 2px solid var(--primary);
+    box-shadow: none;
+}
+
+/* Glass morphism */
+.ui-card--glass {
+    background: var(--glass-light);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border-light);
+}
+
+.dark-theme .ui-card--glass {
+    background: var(--glass-dark);
+    border: 1px solid var(--glass-border-dark);
+}
+
+/* Padding options */
+.ui-card--padding-none {
+    padding: 0;
+}
+
+.ui-card--padding-sm {
+    padding: var(--space-4);
+}
+
+.ui-card--padding-md {
+    padding: var(--space-6);
+}
+
+.ui-card--padding-lg {
+    padding: var(--space-8);
+}
+
+/* Hoverable state */
+.ui-card--hoverable {
+    cursor: pointer;
+}
+
+.ui-card--hoverable:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-2xl);
+}
+
+.dark-theme .ui-card--hoverable:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Card subcomponents */
+.ui-card__header {
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    margin-bottom: var(--space-4);
+}
+
+.dark-theme .ui-card__header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ui-card__body {
+    flex: 1;
+}
+
+.ui-card__footer {
+    padding-top: var(--space-4);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    margin-top: var(--space-4);
+}
+
+.dark-theme .ui-card__footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
