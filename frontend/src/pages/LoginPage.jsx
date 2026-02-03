@@ -45,55 +45,71 @@ const LoginPage = () => {
 
     const handleModeSwitch = () => {
         const newMode = !isLogin;
+        const isMobile = window.innerWidth <= 900;
 
-        // Animate the sliding panel
-        const tl = gsap.timeline();
-
-        // Card pulse
-        tl.to(formContainerRef.current, {
-            scale: 0.98,
-            duration: 0.15,
-            ease: 'power2.in'
-        })
-            .to(formContainerRef.current, {
-                scale: 1,
-                duration: 0.3,
-                ease: 'back.out(2)'
-            });
-
-        // Slide panel animation
-        if (newMode) {
-            // Switching to Login (newMode is true) -> Panel moves to RIGHT (100%)
-            gsap.to(slidePanelRef.current, {
-                x: '100%',
-                duration: 1,
-                ease: 'expo.inOut'
+        if (isMobile) {
+            // Simple fade for mobile
+            gsap.to('.form-content', {
+                opacity: 0,
+                y: -10,
+                duration: 0.2,
+                onComplete: () => {
+                    setIsLogin(newMode);
+                    gsap.fromTo('.form-content',
+                        { opacity: 0, y: 10 },
+                        { opacity: 1, y: 0, duration: 0.3 }
+                    );
+                }
             });
         } else {
-            // Switching to Register (newMode is false) -> Panel moves to LEFT (0%)
-            gsap.to(slidePanelRef.current, {
-                x: '0%',
-                duration: 1,
-                ease: 'expo.inOut'
+            // Desktop Sliding Animation
+            const tl = gsap.timeline();
+
+            // Card pulse
+            tl.to(formContainerRef.current, {
+                scale: 0.98,
+                duration: 0.15,
+                ease: 'power2.in'
+            })
+                .to(formContainerRef.current, {
+                    scale: 1,
+                    duration: 0.3,
+                    ease: 'back.out(2)'
+                });
+
+            // Slide panel animation
+            if (newMode) {
+                // Switching to Login (newMode is true) -> Panel moves to RIGHT (100%)
+                gsap.to(slidePanelRef.current, {
+                    x: '100%',
+                    duration: 1,
+                    ease: 'expo.inOut'
+                });
+            } else {
+                // Switching to Register (newMode is false) -> Panel moves to LEFT (0%)
+                gsap.to(slidePanelRef.current, {
+                    x: '0%',
+                    duration: 1,
+                    ease: 'expo.inOut'
+                });
+            }
+
+            // Fade out current content
+            gsap.to('.form-content', {
+                opacity: 0,
+                y: -20,
+                duration: 0.3,
+                ease: 'power2.in',
+                onComplete: () => {
+                    setIsLogin(newMode);
+                    // Fade in new content
+                    gsap.fromTo('.form-content',
+                        { opacity: 0, y: 20 },
+                        { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }
+                    );
+                }
             });
         }
-
-        // Fade out current content
-        gsap.to('.form-content', {
-            opacity: 0,
-            y: -20,
-            duration: 0.3,
-            ease: 'power2.in',
-            onComplete: () => {
-                setIsLogin(newMode);
-                // Fade in new content
-                gsap.fromTo('.form-content',
-                    { opacity: 0, y: 20 },
-                    { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }
-                );
-            }
-        });
-
         setError('');
     };
 
@@ -744,24 +760,48 @@ const LoginPage = () => {
 
                 /* Responsive */
                 @media (max-width: 900px) {
+                    .login-page {
+                        padding: 16px;
+                    }
+
                     .login-container {
-                        flex-direction: column;
+                        max-width: 100%;
                         height: auto;
-                        max-width: 500px;
+                        min-height: 500px;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
                     }
 
                     .slide-panel {
-                        position: relative;
-                        width: 100%;
-                        height: 300px;
-                        transform: translateX(0);
-                        border-radius: 50px 50px 0 0;
+                        display: none; /* Hide decorative panel on mobile */
                     }
 
                     .form-section {
                         position: relative;
                         width: 100%;
-                        padding: var(--space-8);
+                        transform: none !important; /* Reset any GSAP transform */
+                        left: auto;
+                        height: auto;
+                        padding: 20px;
+                    }
+                    
+                    .form-section.form-left, 
+                    .form-section.form-right {
+                        transform: none !important;
+                    }
+
+                    .form-content {
+                        max-width: 100%;
+                        padding: 0;
+                    }
+
+                    .nav-logo {
+                        font-size: 1.5rem;
+                    }
+                    
+                    .orb-1, .orb-2, .orb-3 {
+                        opacity: 0.15; /* Dim orbs slightly on mobile */
                     }
                 }
             `}</style>

@@ -6,72 +6,95 @@ import {
     Users,
     BookOpen,
     Tags,
-    Settings,
     LogOut,
-    Menu,
-    X,
     Plus,
-    Search,
-    ChevronRight,
-    MoreHorizontal,
-    Activity,
-    Shield,
     Trash2,
     Edit3,
-    BarChart3,
-    Server,
-    Database,
-    Globe,
-    AlertCircle
+    Shield,
+    X,
+    Search,
+    ChevronDown,
+    Save,
+    Menu
 } from 'lucide-react';
 import gsap from 'gsap';
 
 const AdminDashboard = ({ section }) => {
-    const [isSidebarOpen, setSidebarOpen] = useState(true);
     const [stats, setStats] = useState({ totalUsers: 0, totalBooks: 0, totalCategories: 0 });
     const [users, setUsers] = useState([]);
     const [books, setBooks] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isActionLoading, setIsActionLoading] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
-    const containerRef = useRef(null);
+
+    // Modal States
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [showBookModal, setShowBookModal] = useState(false);
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+
+    const [editingBook, setEditingBook] = useState(null);
+    const [editingCategory, setEditingCategory] = useState(null);
+
+    // Form Data
+    const [userForm, setUserForm] = useState({ username: '', email: '', password: '', isAdmin: false });
+    const [bookForm, setBookForm] = useState({ title: '', author: '', bookUrl: '', imageUrl: '', categoryId: '' });
+    const [categoryForm, setCategoryForm] = useState({ name: '' });
+
+    useEffect(() => {
+        const handleScroll = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [section]);
 
     useEffect(() => {
         let isMounted = true;
-        const fetchAdminData = async () => {
+        const fetchData = async () => {
             setLoading(true);
+            const minLoadTime = new Promise(resolve => setTimeout(resolve, 800)); // Enforce min 800ms load
             try {
-                const [statsRes, usersRes, booksRes] = await Promise.all([
-                    axios.get('/api/admin/stats'),
+                const [statsRes, usersRes, booksRes, catsRes] = await Promise.all([
+                    axios.get('/api/admin/stats').catch(err => {
+                        console.error("Stats fetch failed", err);
+                        return { data: { totalUsers: 0, totalBooks: 0, totalCategories: 0 } };
+                    }),
                     axios.get('/api/admin/users').catch(() => ({ data: [] })),
-                    axios.get('/api/books').catch(() => ({ data: [] }))
+                    axios.get('/api/books').catch(() => ({ data: [] })),
+                    axios.get('/api/books/categories').catch(() => ({ data: [] })),
+                    minLoadTime
                 ]);
-
                 if (isMounted) {
                     setStats(statsRes.data);
                     setUsers(usersRes.data);
                     setBooks(booksRes.data);
+                    setCategories(catsRes.data);
                 }
             } catch (err) {
-                console.error('Admin data fetch error', err);
+                console.error('Error fetching admin data', err);
             } finally {
                 if (isMounted) setLoading(false);
             }
         };
-
-        fetchAdminData();
+        fetchData();
         return () => { isMounted = false; };
     }, [section]);
 
     useEffect(() => {
+        let ctx;
         if (!loading) {
-            gsap.from('.admin-reveal', {
-                y: 20,
-                duration: 0.6,
-                stagger: 0.08,
-                ease: 'expo.out'
+            ctx = gsap.context(() => {
+                gsap.fromTo('.admin-reveal',
+                    { y: 20, opacity: 0 },
+                    { y: 0, opacity: 1, duration: 0.6, stagger: 0.08, ease: 'power3.out' }
+                );
             });
         }
+        return () => ctx && ctx.revert();
     }, [loading, section]);
 
     const handleLogout = async () => {
@@ -79,174 +102,263 @@ const AdminDashboard = ({ section }) => {
         navigate('/login');
     };
 
+    // --- User Operations ---
     const handleDeleteUser = async (userId) => {
-        if (!window.confirm('Are you sure you want to terminate this user node?')) return;
-        setIsActionLoading(true);
+        if (!window.confirm('Delete this user?')) return;
         try {
-            // Placeholder for actual delete call if it existed
-            // await axios.delete(`/api/admin/users/${userId}`);
+            await axios.delete(`/api/admin/users/${userId}`);
             setUsers(users.filter(u => (u._id || u.id) !== userId));
             setStats(prev => ({ ...prev, totalUsers: prev.totalUsers - 1 }));
         } catch (err) {
-            console.error('Delete failed', err);
-        } finally {
-            setIsActionLoading(false);
+            console.error('Failed to delete user', err);
+        }
+    };
+
+    const handleUserSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await axios.post('/api/admin/users', userForm);
+            setUsers([...users, res.data]);
+            setStats(prev => ({ ...prev, totalUsers: prev.totalUsers + 1 }));
+            setShowUserModal(false);
+            setUserForm({ username: '', email: '', password: '', isAdmin: false });
+        } catch (err) {
+            console.error('Failed to create user', err);
+            alert('Failed to create user. Email already exists?');
+        }
+    };
+
+    // --- Book Operations ---
+    const handleDeleteBook = async (bookId) => {
+        if (!window.confirm('Delete this book?')) return;
+        try {
+            await axios.delete(`/api/admin/books/${bookId}`);
+            setBooks(books.filter(b => (b._id || b.id) !== bookId));
+            setStats(prev => ({ ...prev, totalBooks: prev.totalBooks - 1 }));
+        } catch (err) {
+            console.error('Failed to delete book', err);
+        }
+    };
+
+    const openEditBook = (book) => {
+        setEditingBook(book);
+        setBookForm({
+            title: book.title,
+            author: book.author,
+            bookUrl: book.bookUrl,
+            imageUrl: book.imageUrl,
+            categoryId: book.categoryId || ''
+        });
+        setShowBookModal(true);
+    };
+
+    const handleBookSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            if (editingBook) {
+                const res = await axios.put(`/api/admin/books/${editingBook._id || editingBook.id}`, bookForm);
+                setBooks(books.map(b => (b._id || b.id) === (editingBook._id || editingBook.id) ? res.data : b));
+            } else {
+                const res = await axios.post('/api/admin/books', bookForm);
+                setBooks([...books, res.data]);
+                setStats(prev => ({ ...prev, totalBooks: prev.totalBooks + 1 }));
+            }
+            setShowBookModal(false);
+            setEditingBook(null);
+            setBookForm({ title: '', author: '', bookUrl: '', imageUrl: '', categoryId: '' });
+        } catch (err) {
+            console.error('Failed to save book', err);
+            alert('Failed to save book');
+        }
+    };
+
+    // --- Category Operations ---
+    const handleDeleteCategory = async (catId) => {
+        if (!window.confirm('Delete this category?')) return;
+        try {
+            await axios.delete(`/api/admin/categories/${catId}`);
+            setCategories(categories.filter(c => (c._id || c.id) !== catId));
+            setStats(prev => ({ ...prev, totalCategories: prev.totalCategories - 1 }));
+        } catch (err) {
+            console.error('Failed to delete category', err);
+        }
+    };
+
+    const openEditCategory = (category) => {
+        setEditingCategory(category);
+        setCategoryForm({ name: category.name });
+        setShowCategoryModal(true);
+    };
+
+    const handleCategorySubmit = async (e) => {
+        e.preventDefault();
+        try {
+            if (editingCategory) {
+                const res = await axios.put(`/api/admin/categories/${editingCategory._id || editingCategory.id}`, categoryForm);
+                setCategories(categories.map(c => (c._id || c.id) === (editingCategory._id || editingCategory.id) ? res.data : c));
+            } else {
+                const res = await axios.post('/api/admin/categories', categoryForm);
+                setCategories([...categories, res.data]);
+                setStats(prev => ({ ...prev, totalCategories: prev.totalCategories + 1 }));
+            }
+            setShowCategoryModal(false);
+            setEditingCategory(null);
+            setCategoryForm({ name: '' });
+        } catch (err) {
+            console.error('Failed to save category', err);
         }
     };
 
     return (
-        <div className={`admin-portal-v02 ${isSidebarOpen ? '' : 'sidebar-hidden'}`} ref={containerRef}>
-            {/* Ambient Background for Admin */}
-            <div className="admin-v2-atmosphere">
-                <div className="admin-glow-blob primary"></div>
-                <div className="admin-glow-blob secondary"></div>
-            </div>
+        <div className="admin-layout-modern">
+            {/* Top Navigation Bar */}
+            <nav className={`admin-navbar ${scrolled ? 'scrolled' : ''}`}>
+                <div className="nav-container">
+                    <div className="brand-section">
+                        <div className="brand-logo">
+                            <Shield size={22} className="shield-icon" />
+                        </div>
+                        <span className="brand-name">Admin<span>Panel</span></span>
+                    </div>
 
-            <aside className="admin-sidebar-v2 glass-morphism">
-                <div className="admin-branding-v2">
-                    <div className="v2-shield-box"><Shield size={24} /></div>
-                    <div className="v2-brand-text">
-                        <span>CORE<span>ADMIN</span></span>
-                        <p>SYSTEM v0.2.4</p>
+                    <div className="nav-links desktop-only">
+                        <NavLink to="/admin" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} end>
+                            <LayoutDashboard size={18} /> <span>Overview</span>
+                        </NavLink>
+                        <NavLink to="/admin/users" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <Users size={18} /> <span>Users</span>
+                        </NavLink>
+                        <NavLink to="/admin/books" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <BookOpen size={18} /> <span>Books</span>
+                        </NavLink>
+                        <NavLink to="/admin/categories" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <Tags size={18} /> <span>Categories</span>
+                        </NavLink>
+                    </div>
+
+                    <div className="nav-actions">
+                        <div className="admin-profile">
+                            <div className="admin-avatar">A</div>
+                            <span className="admin-label">Admin</span>
+                        </div>
+                        <button onClick={handleLogout} className="logout-button">
+                            <LogOut size={18} />
+                        </button>
+                        <button className="mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                        </button>
                     </div>
                 </div>
 
-                <nav className="admin-nav-v2">
-                    <div className="nav-group">
-                        <p>COMMAND</p>
-                        <NavLink to="/admin" className={({ isActive }) => `v2-admin-link ${isActive ? 'active' : ''}`} end>
+                {mobileMenuOpen && (
+                    <div className="mobile-menu">
+                        <NavLink to="/admin" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)} end>
                             <LayoutDashboard size={20} /> <span>Overview</span>
                         </NavLink>
-                    </div>
-
-                    <div className="nav-group">
-                        <p>MANAGEMENT</p>
-                        <NavLink to="/admin/users" className={({ isActive }) => `v2-admin-link ${isActive ? 'active' : ''}`}>
-                            <Users size={20} /> <span>User Nodes</span>
+                        <NavLink to="/admin/users" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                            <Users size={20} /> <span>Users</span>
                         </NavLink>
-                        <NavLink to="/admin/books" className={({ isActive }) => `v2-admin-link ${isActive ? 'active' : ''}`}>
-                            <BookOpen size={20} /> <span>Archive Inventory</span>
+                        <NavLink to="/admin/books" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                            <BookOpen size={20} /> <span>Books</span>
                         </NavLink>
-                        <NavLink to="/admin/categories" className={({ isActive }) => `v2-admin-link ${isActive ? 'active' : ''}`}>
-                            <Tags size={20} /> <span>Genre Clusters</span>
+                        <NavLink to="/admin/categories" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                            <Tags size={20} /> <span>Categories</span>
                         </NavLink>
                     </div>
-                </nav>
+                )}
+            </nav>
 
-                <div className="admin-sidebar-footer-v2">
-                    <div className="server-status glass-morphism">
-                        <div className="status-header">
-                            <Server size={14} />
-                            <span>NODE-ALPHA</span>
-                        </div>
-                        <div className="status-bars">
-                            <div className="bar active"></div>
-                            <div className="bar active"></div>
-                            <div className="bar pulse"></div>
-                        </div>
-                    </div>
-                    <button onClick={handleLogout} className="admin-logout-v2">
-                        <LogOut size={18} /> <span>Relinquish Control</span>
-                    </button>
-                </div>
-            </aside>
+            {/* Main Content */}
+            <main className="admin-main">
+                <div className="content-container">
+                    {loading ? (
+                        <div className="skeleton-loader">
+                            {/* Header Skeleton */}
+                            <div className="sk-header">
+                                <div className="sk-title"></div>
+                                <div className="sk-subtitle"></div>
+                            </div>
 
-            <main className="admin-content-v2">
-                <header className="admin-top-v2 glass-morphism">
-                    <div className="top-left-v2">
-                        <button className="v2-toggle" onClick={() => setSidebarOpen(!isSidebarOpen)}>
-                            <Menu size={22} />
-                        </button>
-                        <div className="v2-breadcrumb">
-                            <Database size={16} /> <span>ARCHIVE</span> <ChevronRight size={14} /> <span className="highlight">{section}</span>
-                        </div>
-                    </div>
+                            {/* Stats Skeleton */}
+                            <div className="stats-row">
+                                <div className="stat-card sk-card"><div className="sk-icon"></div><div className="sk-content"><div className="sk-h3"></div><div className="sk-p"></div></div></div>
+                                <div className="stat-card sk-card"><div className="sk-icon"></div><div className="sk-content"><div className="sk-h3"></div><div className="sk-p"></div></div></div>
+                                <div className="stat-card sk-card"><div className="sk-icon"></div><div className="sk-content"><div className="sk-h3"></div><div className="sk-p"></div></div></div>
+                            </div>
 
-                    <div className="top-right-v2">
-                        <div className="system-metrics">
-                            <div className="metric">
-                                <span className="dot online"></span>
-                                <span>DB: READY</span>
+                            {/* Table Skeleton */}
+                            <div className="table-card sk-table-card">
+                                <div className="section-head"><div className="sk-title-sm"></div></div>
+                                <div className="sk-rows">
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                        <div key={i} className="sk-row">
+                                            <div className="sk-cell wide"></div>
+                                            <div className="sk-cell"></div>
+                                            <div className="sk-cell"></div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                        <div className="admin-pill-v2">
-                            <div className="pill-text">MASTER_ROOT</div>
-                            <div className="pill-circle">AD</div>
-                        </div>
-                    </div>
-                </header>
-
-                <div className="admin-body-v2">
-                    {loading ? (
-                        <div className="v2-global-loader">
-                            <div className="v2-loader-circle"></div>
-                            <p>Connecting to Secure Nodes...</p>
-                        </div>
                     ) : (
-                        <div className="v2-view-content">
+                        <>
                             {section === 'overview' && (
-                                <div className="v2-overview-grid">
-                                    <div className="v2-stat-card-admin admin-reveal">
-                                        <div className="stat-v2-header">
-                                            <div className="stat-v2-icon blue"><Users /></div>
-                                            <span className="stat-v2-tag">+12%</span>
+                                <div className="dashboard-view">
+                                    <header className="view-header admin-reveal">
+                                        <h1>Dashboard Overview</h1>
+                                        <p>Welcome back, Administrator.</p>
+                                    </header>
+
+                                    <div className="stats-row">
+                                        <div className="stat-card blue admin-reveal">
+                                            <div className="stat-icon"><Users /></div>
+                                            <div className="stat-data">
+                                                <h3>{stats.totalUsers}</h3>
+                                                <p>Total Users</p>
+                                            </div>
                                         </div>
-                                        <div className="stat-v2-body">
-                                            <h3>{stats.totalUsers}</h3>
-                                            <p>Authenticated Nodes</p>
+                                        <div className="stat-card purple admin-reveal">
+                                            <div className="stat-icon"><BookOpen /></div>
+                                            <div className="stat-data">
+                                                <h3>{stats.totalBooks}</h3>
+                                                <p>Total Books</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="v2-stat-card-admin admin-reveal">
-                                        <div className="stat-v2-header">
-                                            <div className="stat-v2-icon purple"><BookOpen /></div>
-                                            <span className="stat-v2-tag">STABLE</span>
-                                        </div>
-                                        <div className="stat-v2-body">
-                                            <h3>{stats.totalBooks}</h3>
-                                            <p>Digital Volumes</p>
-                                        </div>
-                                    </div>
-                                    <div className="v2-stat-card-admin admin-reveal">
-                                        <div className="stat-v2-header">
-                                            <div className="stat-v2-icon rose"><Tags /></div>
-                                            <span className="stat-v2-tag">INDEXED</span>
-                                        </div>
-                                        <div className="stat-v2-body">
-                                            <h3>{stats.totalCategories}</h3>
-                                            <p>Mapped Genres</p>
+                                        <div className="stat-card rose admin-reveal">
+                                            <div className="stat-icon"><Tags /></div>
+                                            <div className="stat-data">
+                                                <h3>{stats.totalCategories}</h3>
+                                                <p>Categories</p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="v2-wide-card glass-morphism admin-reveal">
-                                        <div className="wide-card-header">
-                                            <div className="title-box">
-                                                <h3>Recent Access Streams</h3>
-                                                <p>Monitoring real-time authentication events</p>
-                                            </div>
-                                            <button className="v2-ghost-btn">Export Data</button>
+                                    <div className="recent-section admin-reveal">
+                                        <div className="section-head">
+                                            <h2>Recent Users</h2>
                                         </div>
-                                        <div className="v2-table-wrap">
-                                            <table className="v2-admin-table">
+                                        <div className="table-responsive">
+                                            <table className="modern-table">
                                                 <thead>
                                                     <tr>
-                                                        <th>USER IDENTIFIER</th>
-                                                        <th>COMMUNICATION</th>
-                                                        <th>ACCESS LEVEL</th>
-                                                        <th>NODE STATUS</th>
-                                                        <th>ACTION</th>
+                                                        <th>User</th>
+                                                        <th>Email</th>
+                                                        <th>Role</th>
+                                                        <th>Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {users.slice(0, 5).map(u => (
                                                         <tr key={u._id || u.id}>
-                                                            <td className="v2-user-cell">
-                                                                <div className="v2-tiny-avatar">{u.username.charAt(0)}</div>
-                                                                <span>{u.username}</span>
+                                                            <td>
+                                                                <div className="user-flex">
+                                                                    <div className="table-avatar">{u.username[0]}</div>
+                                                                    <span>{u.username}</span>
+                                                                </div>
                                                             </td>
                                                             <td>{u.email}</td>
-                                                            <td><span className={`v2-badge ${u.isAdmin ? 'admin' : 'user'}`}>{u.isAdmin ? 'MASTER' : 'ENTITY'}</span></td>
-                                                            <td><span className="v2-status-pill">ACTIVE</span></td>
-                                                            <td><MoreHorizontal size={18} className="faded-icon" /></td>
+                                                            <td><span className={`badge ${u.isAdmin ? 'admin' : 'user'}`}>{u.isAdmin ? 'Admin' : 'User'}</span></td>
+                                                            <td><span className="status-dot active">Active</span></td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -257,68 +369,87 @@ const AdminDashboard = ({ section }) => {
                             )}
 
                             {section === 'users' && (
-                                <div className="v2-manager-container">
-                                    <div className="v2-manager-head admin-reveal">
-                                        <div className="head-text">
-                                            <h1>Identity Protocols</h1>
-                                            <p>Manage secure user node authentication and access tiers</p>
+                                <div className="dashboard-view">
+                                    <header className="view-header with-action admin-reveal">
+                                        <div>
+                                            <h1>User Management</h1>
+                                            <p>Manage system access and roles.</p>
                                         </div>
-                                        <button className="v2-primary-btn"><Plus size={18} /> Provision New Identity</button>
-                                    </div>
-                                    <div className="v2-table-card glass-morphism admin-reveal">
-                                        <table className="v2-admin-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>IDENTITY</th>
-                                                    <th>COMM CHANNEL</th>
-                                                    <th>TIER LEVEL</th>
-                                                    <th>INTEGRITY</th>
-                                                    <th>NODE OPS</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {users.map(u => (
-                                                    <tr key={u._id || u.id}>
-                                                        <td className="v2-user-cell"><div className="v2-tiny-avatar">{u.username.charAt(0)}</div> {u.username}</td>
-                                                        <td>{u.email}</td>
-                                                        <td><span className={`v2-badge ${u.isAdmin ? 'admin' : 'user'}`}>{u.isAdmin ? 'MASTER_ROOT' : 'VERIFIED_USER'}</span></td>
-                                                        <td><div className="integrity-bar"><div className="fill" style={{ width: '95%' }}></div></div></td>
-                                                        <td className="v2-ops">
-                                                            <button className="op-v2 edit"><Edit3 size={16} /></button>
-                                                            <button className="op-v2 delete" onClick={() => handleDeleteUser(u._id || u.id)}><Trash2 size={16} /></button>
-                                                        </td>
+                                        <button className="primary-btn" onClick={() => setShowUserModal(true)}>
+                                            <Plus size={18} /> Add User
+                                        </button>
+                                    </header>
+
+                                    <div className="table-card admin-reveal">
+                                        <div className="table-responsive">
+                                            <table className="modern-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>User</th>
+                                                        <th>Email</th>
+                                                        <th>Role</th>
+                                                        <th>Actions</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody>
+                                                    {users.map(u => (
+                                                        <tr key={u._id || u.id}>
+                                                            <td>
+                                                                <div className="user-flex">
+                                                                    <div className="table-avatar">{u.username[0]}</div>
+                                                                    <span>{u.username}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>{u.email}</td>
+                                                            <td><span className={`badge ${u.isAdmin ? 'admin' : 'user'}`}>{u.isAdmin ? 'Admin' : 'User'}</span></td>
+                                                            <td>
+                                                                <button className="icon-action delete" onClick={() => handleDeleteUser(u._id || u.id)}>
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
                             {section === 'books' && (
-                                <div className="v2-manager-container">
-                                    <div className="v2-manager-head admin-reveal">
-                                        <div className="head-text">
-                                            <h1>Archive Architecture</h1>
-                                            <p>Control digital asset metadata and inventory dispersal</p>
+                                <div className="dashboard-view">
+                                    <header className="view-header with-action admin-reveal">
+                                        <div>
+                                            <h1>Book Management</h1>
+                                            <p>Manage digital library inventory.</p>
                                         </div>
-                                        <button className="v2-primary-btn"><Plus size={18} /> Catalog New Volume</button>
-                                    </div>
-                                    <div className="v2-archive-grid admin-reveal">
+                                        <button className="primary-btn" onClick={() => {
+                                            setEditingBook(null);
+                                            setBookForm({ title: '', author: '', bookUrl: '', imageUrl: '', categoryId: '' });
+                                            setShowBookModal(true);
+                                        }}>
+                                            <Plus size={18} /> Add Book
+                                        </button>
+                                    </header>
+
+                                    <div className="books-grid-modern admin-reveal">
                                         {books.map(b => (
-                                            <div key={b._id || b.id} className="v2-archive-item glass-morphism">
-                                                <div className="v2-arch-thumb">
-                                                    <img src={b.imageUrl || 'https://via.placeholder.com/150'} alt="" />
-                                                    <div className="arch-meta-tag">V:01</div>
+                                            <div key={b._id || b.id} className="book-card-item">
+                                                <div className="card-cover">
+                                                    <img src={b.imageUrl || 'https://via.placeholder.com/150'} alt={b.title} />
                                                 </div>
-                                                <div className="v2-arch-details">
+                                                <div className="card-info">
                                                     <h4>{b.title}</h4>
-                                                    <p>{b.author || 'ROOT_CREATOR'}</p>
-                                                    <div className="v2-arch-footer">
-                                                        <span className="cat-pill">{b.category_name || 'GENERAL'}</span>
-                                                        <div className="arch-actions">
-                                                            <Edit3 size={14} />
-                                                            <Trash2 size={14} />
+                                                    <p>{b.author}</p>
+                                                    <div className="card-meta">
+                                                        <span className="cat-tag">{b.category_name || 'General'}</span>
+                                                        <div className="card-actions">
+                                                            <button className="icon-action edit" onClick={() => openEditBook(b)}>
+                                                                <Edit3 size={15} />
+                                                            </button>
+                                                            <button className="icon-action delete" onClick={() => handleDeleteBook(b._id || b.id)}>
+                                                                <Trash2 size={15} />
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -327,143 +458,546 @@ const AdminDashboard = ({ section }) => {
                                     </div>
                                 </div>
                             )}
-                        </div>
+
+                            {section === 'categories' && (
+                                <div className="dashboard-view">
+                                    <header className="view-header with-action admin-reveal">
+                                        <div>
+                                            <h1>Category Management</h1>
+                                            <p>Organize books into genres.</p>
+                                        </div>
+                                        <button className="primary-btn" onClick={() => {
+                                            setEditingCategory(null);
+                                            setCategoryForm({ name: '' });
+                                            setShowCategoryModal(true);
+                                        }}>
+                                            <Plus size={18} /> Add Category
+                                        </button>
+                                    </header>
+
+                                    <div className="table-card admin-reveal">
+                                        <div className="table-responsive">
+                                            <table className="modern-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Name</th>
+                                                        <th>Book Count</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {categories.map(c => (
+                                                        <tr key={c._id || c.id}>
+                                                            <td><span className="cat-tag">{c.name}</span></td>
+                                                            <td><span className="status-dot">{(c.book_count || 0) + ' Books'}</span></td>
+                                                            <td>
+                                                                <div className="user-flex" style={{ gap: '4px' }}>
+                                                                    <button className="icon-action edit" onClick={() => openEditCategory(c)}>
+                                                                        <Edit3 size={16} />
+                                                                    </button>
+                                                                    <button className="icon-action delete" onClick={() => handleDeleteCategory(c._id || c.id)}>
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </main>
 
+            {/* Modals */}
+            {showUserModal && (
+                <div className="modal-backdrop">
+                    <div className="modal-content">
+                        <div className="modal-head">
+                            <h3>Add New User</h3>
+                            <button onClick={() => setShowUserModal(false)}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleUserSubmit}>
+                            <div className="input-group">
+                                <label>Username</label>
+                                <input type="text" required value={userForm.username} onChange={e => setUserForm({ ...userForm, username: e.target.value })} />
+                            </div>
+                            <div className="input-group">
+                                <label>Email</label>
+                                <input type="email" required value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} />
+                            </div>
+                            <div className="input-group">
+                                <label>Password</label>
+                                <input type="password" required value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} />
+                            </div>
+                            <div className="input-group check">
+                                <input type="checkbox" checked={userForm.isAdmin} onChange={e => setUserForm({ ...userForm, isAdmin: e.target.checked })} />
+                                <label>Admin Privileges</label>
+                            </div>
+                            <button className="submit-btn full">Create User</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showBookModal && (
+                <div className="modal-backdrop">
+                    <div className="modal-content">
+                        <div className="modal-head">
+                            <h3>{editingBook ? 'Edit Book' : 'Add New Book'}</h3>
+                            <button onClick={() => setShowBookModal(false)}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleBookSubmit}>
+                            <div className="input-group">
+                                <label>Title</label>
+                                <input type="text" required value={bookForm.title} onChange={e => setBookForm({ ...bookForm, title: e.target.value })} />
+                            </div>
+                            <div className="input-group">
+                                <label>Author</label>
+                                <input type="text" required value={bookForm.author} onChange={e => setBookForm({ ...bookForm, author: e.target.value })} />
+                            </div>
+                            <div className="input-group">
+                                <label>Category</label>
+                                <select value={bookForm.categoryId} onChange={e => setBookForm({ ...bookForm, categoryId: e.target.value })}>
+                                    <option value="">Select Category</option>
+                                    {categories.map(cat => (
+                                        <option key={cat._id} value={cat._id}>{cat.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="input-group">
+                                <label>Cover URL</label>
+                                <input type="text" required value={bookForm.imageUrl} onChange={e => setBookForm({ ...bookForm, imageUrl: e.target.value })} />
+                            </div>
+                            <div className="input-group">
+                                <label>Book Link</label>
+                                <input type="text" required value={bookForm.bookUrl} onChange={e => setBookForm({ ...bookForm, bookUrl: e.target.value })} />
+                            </div>
+                            <button className="submit-btn full">
+                                {editingBook ? 'Save Changes' : 'Add Book'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showCategoryModal && (
+                <div className="modal-backdrop">
+                    <div className="modal-content">
+                        <div className="modal-head">
+                            <h3>{editingCategory ? 'Edit Category' : 'Add New Category'}</h3>
+                            <button onClick={() => setShowCategoryModal(false)}><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleCategorySubmit}>
+                            <div className="input-group">
+                                <label>Category Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={categoryForm.name}
+                                    onChange={e => setCategoryForm({ name: e.target.value })}
+                                    placeholder="e.g. Science Fiction"
+                                />
+                            </div>
+                            <button className="submit-btn full">{editingCategory ? 'Save Changes' : 'Add Category'}</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             <style>{`
-                .admin-portal-v02 { display: grid; grid-template-columns: 320px 1fr; height: 100vh; background: #020617; color: white; overflow: hidden; transition: 0.6s cubic-bezier(0.19, 1, 0.22, 1); }
-                .admin-portal-v02.sidebar-hidden { grid-template-columns: 0px 1fr; }
-                
-                .admin-v2-atmosphere { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-                .admin-glow-blob { position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.12; }
-                .admin-glow-blob.primary { width: 700px; height: 700px; background: #3b82f6; top: -10%; left: -5%; }
-                .admin-glow-blob.secondary { width: 500px; height: 500px; background: #f43f5e; bottom: -5%; right: -5%; }
-
-                .admin-sidebar-v2 { 
-                    height: 100vh; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(40px);
-                    border-right: 1px solid rgba(255,255,255,0.05); padding: 50px 30px; display: flex; flex-direction: column;
-                    z-index: 50; transition: transform 0.6s;
+                :root {
+                    --bg-dark: #0f172a;
+                    --bg-card: #1e293b;
+                    --primary: #6366f1;
+                    --primary-hover: #4f46e5;
+                    --text-main: #f8fafc;
+                    --text-muted: #94a3b8;
+                    --border: rgba(255, 255, 255, 0.08);
                 }
-                .sidebar-hidden .admin-sidebar-v2 { transform: translateX(-100%); width: 0; padding: 0; }
-                
-                .admin-branding-v2 { display: flex; align-items: center; gap: 15px; margin-bottom: 60px; }
-                .v2-shield-box { width: 48px; height: 48px; background: #f43f5e; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(244, 63, 94, 0.4); }
-                .v2-brand-text span { font-size: 1.4rem; font-weight: 900; letter-spacing: -1px; display: block; line-height: 1; }
-                .v2-brand-text span span { display: inline; color: #f43f5e; }
-                .v2-brand-text p { font-size: 0.65rem; font-weight: 800; color: #64748b; margin-top: 5px; opacity: 0.8; }
 
-                .admin-nav-v2 { flex: 1; }
-                .nav-group { margin-bottom: 40px; }
-                .nav-group p { font-size: 0.7rem; font-weight: 900; color: #475569; letter-spacing: 2px; margin-bottom: 15px; padding-left: 15px; }
-                
-                .v2-admin-link { 
-                    display: flex; align-items: center; gap: 15px; padding: 16px 20px; border-radius: 18px; 
-                    text-decoration: none; color: #94a3b8; font-weight: 700; transition: 0.3s; margin-bottom: 8px;
+                .admin-layout-modern {
+                    min-height: 100vh;
+                    background: var(--bg-dark);
+                    color: var(--text-main);
+                    font-family: 'Inter', sans-serif;
+                    display: flex;
+                    flex-direction: column;
                 }
-                .v2-admin-link:hover { color: white; background: rgba(255,255,255,0.03); }
-                .v2-admin-link.active { background: #f43f5e; color: white; box-shadow: 0 15px 30px rgba(244, 63, 94, 0.2); }
 
-                .admin-sidebar-footer-v2 { padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); }
-                .server-status { padding: 18px; border-radius: 20px; background: rgba(255,255,255,0.03); margin-bottom: 25px; }
-                .status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-                .status-header span { font-size: 0.7rem; font-weight: 800; color: #94a3b8; }
-                .status-bars { display: flex; gap: 4px; }
-                .bar { height: 4px; flex: 1; background: rgba(255,255,255,0.1); border-radius: 2px; }
-                .bar.active { background: #10b981; }
-                .bar.pulse { background: #10b981; animation: statusPulse 1.5s infinite; }
-                @keyframes statusPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-                
-                .admin-logout-v2 { width: 100%; display: flex; align-items: center; gap: 12px; padding: 15px; border-radius: 16px; background: transparent; border: none; color: #94a3b8; cursor: pointer; font-weight: 700; transition: 0.3s; }
-                .admin-logout-v2:hover { background: rgba(244, 63, 94, 0.05); color: #f43f5e; }
-
-                .admin-content-v2 { flex: 1; display: flex; flex-direction: column; padding: 35px 50px; z-index: 10; overflow-y: auto; }
-                .admin-top-v2 { display: flex; justify-content: space-between; align-items: center; padding: 20px 35px; border-radius: 30px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); margin-bottom: 45px; }
-                .top-left-v2 { display: flex; align-items: center; gap: 30px; }
-                .v2-toggle { background: transparent; border: none; color: #94a3b8; cursor: pointer; }
-                .v2-breadcrumb { display: flex; align-items: center; gap: 12px; color: #64748b; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.5px; }
-                .v2-breadcrumb .highlight { color: #f43f5e; text-transform: uppercase; }
-
-                .top-right-v2 { display: flex; align-items: center; gap: 40px; }
-                .system-metrics { display: flex; gap: 20px; }
-                .metric { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; font-weight: 900; color: #94a3b8; }
-                .dot { width: 6px; height: 6px; border-radius: 50%; }
-                .dot.online { background: #10b981; box-shadow: 0 0 8px #10b981; }
-                
-                .admin-pill-v2 { 
-                    display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.3); padding: 8px 18px; 
-                    border-radius: 100px; border: 1px solid rgba(255,255,255,0.05); 
+                /* Navbar */
+                .admin-navbar {
+                    position: sticky;
+                    top: 0;
+                    z-index: 100;
+                    background: rgba(15, 23, 42, 0.8);
+                    backdrop-filter: blur(12px);
+                    border-bottom: 1px solid var(--border);
+                    padding: 0 24px;
+                    transition: all 0.3s;
                 }
-                .pill-text { font-size: 0.75rem; font-weight: 900; color: #94a3b8; letter-spacing: 1px; }
-                .pill-circle { width: 34px; height: 34px; background: #f43f5e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.8rem; }
-
-                .v2-overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
-                .v2-stat-card-admin { 
-                    padding: 35px; border-radius: 40px; border: 1px solid rgba(255,255,255,0.05);
-                    background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.01) 100%);
-                    transition: 0.4s; position: relative; overflow: hidden;
+                .admin-navbar.scrolled {
+                    background: rgba(15, 23, 42, 0.95);
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
                 }
-                .v2-stat-card-admin:hover { transform: translateY(-10px); border-color: rgba(244, 63, 94, 0.4); background: rgba(244, 63, 94, 0.02); }
-                .stat-v2-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-                .stat-v2-icon { width: 60px; height: 60px; border-radius: 20px; display: flex; align-items: center; justify-content: center; }
-                .stat-v2-icon.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-                .stat-v2-icon.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
-                .stat-v2-icon.rose { background: rgba(244, 63, 94, 0.1); color: #f43f5e; }
-                .stat-v2-tag { font-size: 0.7rem; font-weight: 900; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 8px; color: #94a3b8; }
+
+                .nav-container {
+                    max-width: 1400px;
+                    margin: 0 auto;
+                    height: 70px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+
+                .brand-section {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                .brand-logo {
+                    width: 36px;
+                    height: 36px;
+                    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+                }
+                .shield-icon { color: white; }
+                .brand-name { font-size: 1.2rem; font-weight: 700; color: white; letter-spacing: -0.5px; }
+                .brand-name span { color: #818cf8; font-weight: 400; }
+
+                .nav-links {
+                    display: flex;
+                    gap: 8px;
+                }
+                .nav-link {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    color: var(--text-muted);
+                    text-decoration: none;
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                }
+                .nav-link:hover { color: white; background: rgba(255,255,255,0.05); }
+                .nav-link.active { background: rgba(99, 102, 241, 0.15); color: #818cf8; font-weight: 600; }
+
+                .nav-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                }
+                .admin-profile {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 6px 12px;
+                    background: rgba(255,255,255,0.03);
+                    border-radius: 30px;
+                    border: 1px solid var(--border);
+                }
+                .admin-avatar {
+                    width: 28px;
+                    height: 28px;
+                    background: #6366f1;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.8rem;
+                    font-weight: 700;
+                }
+                .admin-label { font-size: 0.85rem; font-weight: 600; color: #e2e8f0; }
                 
-                .stat-v2-body h3 { font-size: 3rem; font-weight: 900; line-height: 1; margin-bottom: 5px; }
-                .stat-v2-body p { font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; }
+                .logout-button {
+                    background: transparent;
+                    border: none;
+                    color: #94a3b8;
+                    cursor: pointer;
+                    padding: 8px;
+                    border-radius: 8px;
+                    transition: 0.2s;
+                }
+                .logout-button:hover { color: #f43f5e; background: rgba(244, 63, 94, 0.1); }
 
-                .v2-wide-card { grid-column: span 3; padding: 45px; border-radius: 45px; border: 1px solid rgba(255,255,255,0.05); }
-                .wide-card-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; }
-                .title-box h3 { font-size: 1.8rem; letter-spacing: -1px; margin-bottom: 5px; }
-                .title-box p { color: #64748b; font-weight: 600; }
-                .v2-ghost-btn { padding: 12px 24px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); color: white; font-weight: 800; cursor: pointer; transition: 0.3s; }
-                .v2-ghost-btn:hover { background: rgba(255,255,255,0.08); }
+                /* Main Content */
+                .admin-main {
+                    flex: 1;
+                    padding: 30px;
+                }
+                .content-container {
+                    max-width: 1400px;
+                    margin: 0 auto;
+                }
 
-                .v2-admin-table { width: 100%; border-collapse: collapse; }
-                .v2-admin-table th { text-align: left; padding: 20px; color: #475569; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-                .v2-admin-table td { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.02); color: #cbd5e1; font-weight: 600; font-size: 0.95rem; }
+                .view-header { margin-bottom: 40px; }
+                .view-header.with-action { display: flex; justify-content: space-between; align-items: flex-end; }
+                .view-header h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
+                .view-header p { color: var(--text-muted); font-size: 1rem; }
+
+                .primary-btn {
+                    background: var(--primary);
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    cursor: pointer;
+                    transition: 0.2s;
+                    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+                }
+                .primary-btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
+
+                /* Stats (Premium Style) */
+                .stats-row {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 24px;
+                    margin-bottom: 40px;
+                }
+                .stat-card {
+                    background: linear-gradient(145deg, rgba(51, 65, 85, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 20px;
+                    padding: 24px 30px;
+                    display: flex;
+                    align-items: center;
+                    gap: 24px;
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+                }
+                .stat-card:hover { 
+                    transform: translateY(-5px); 
+                    border-color: rgba(99, 102, 241, 0.8); 
+                    background: linear-gradient(145deg, rgba(71, 85, 105, 0.95) 0%, rgba(51, 65, 85, 0.9) 100%);
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+                }
+                .stat-icon {
+                    flex-shrink: 0;
+                    width: 60px;
+                    height: 60px;
+                    border-radius: 16px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.75rem;
+                    background: rgba(15, 23, 42, 0.5);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+                }
+                .stat-card.blue .stat-icon { background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1)); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
+                .stat-card.purple .stat-icon { background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1)); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.2); }
+                .stat-card.rose .stat-icon { background: linear-gradient(135deg, rgba(244, 63, 94, 0.2), rgba(244, 63, 94, 0.1)); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.2); }
                 
-                .v2-user-cell { display: flex; align-items: center; gap: 15px; }
-                .v2-tiny-avatar { width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 900; }
-                .v2-badge { padding: 6px 14px; border-radius: 10px; font-size: 0.65rem; font-weight: 900; letter-spacing: 0.5px; }
-                .v2-badge.admin { background: rgba(244, 63, 94, 0.1); color: #f43f5e; }
-                .v2-badge.user { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-                .v2-status-pill { font-size: 0.7rem; font-weight: 900; color: #10b981; }
+                .stat-data h3 { font-size: 2.5rem; font-weight: 800; line-height: 1; margin: 0 0 4px 0; letter-spacing: -1px; }
+                .stat-data p { color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
 
-                .v2-manager-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 45px; }
-                .v2-manager-head h1 { font-size: 3.5rem; letter-spacing: -3px; line-height: 1; }
-                .v2-manager-head p { font-size: 1.1rem; color: #64748b; margin-top: 10px; font-weight: 500; }
-                .v2-primary-btn { padding: 16px 32px; background: #f43f5e; color: white; border-radius: 20px; border: none; font-weight: 800; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: 0.3s; box-shadow: 0 15px 30px rgba(244, 63, 94, 0.3); }
-                .v2-primary-btn:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(244, 63, 94, 0.4); }
+                /* Tables */
+                /* Tables */
+                .table-card, .recent-section {
+                    background: rgba(30, 41, 59, 0.6); 
+                    backdrop-filter: blur(20px);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 20px;
+                    overflow: hidden;
+                    padding: 24px;
+                    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+                }
+                .table-responsive { width: 100%; overflow-x: auto; }
+                .section-head { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+                .section-head h2 { font-size: 1.2rem; font-weight: 700; }
 
-                .v2-archive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 30px; }
-                .v2-archive-item { padding: 25px; border-radius: 35px; border: 1px solid rgba(255,255,255,0.05); display: flex; gap: 25px; transition: 0.4s; }
-                .v2-archive-item:hover { transform: translateY(-8px); border-color: #f43f5e; }
-                .v2-arch-thumb { width: 140px; height: 190px; border-radius: 20px; overflow: hidden; position: relative; }
-                .v2-arch-thumb img { width: 100%; height: 100%; object-fit: cover; }
-                .arch-meta-tag { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 6px; font-size: 0.6rem; font-weight: 900; }
+                .modern-table { width: 100%; border-collapse: collapse; }
+                .modern-table th { text-align: left; padding: 12px; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; }
+                .modern-table td { padding: 16px 12px; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+                .modern-table tr:last-child td { border-bottom: none; }
                 
-                .v2-arch-details { flex: 1; display: flex; flex-direction: column; }
-                .v2-arch-details h4 { font-size: 1.3rem; margin-bottom: 5px; }
-                .v2-arch-details p { color: #64748b; font-size: 0.9rem; flex: 1; }
-                .v2-arch-footer { display: flex; justify-content: space-between; align-items: center; }
-                .cat-pill { padding: 6px 14px; background: rgba(255,255,255,0.03); border-radius: 10px; font-size: 0.7rem; font-weight: 900; color: #94a3b8; }
-                .arch-actions { display: flex; gap: 15px; color: #475569; }
-
-                .v2-global-loader { height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-                .v2-loader-circle { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.05); border-top-color: #f43f5e; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 25px; }
-                @keyframes spin { to { transform: rotate(360deg); } }
-
-                .v2-ops { display: flex; gap: 12px; }
-                .op-v2 { width: 42px; height: 42px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); background: transparent; color: #64748b; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
-                .op-v2.edit:hover { background: #3b82f6; color: white; }
-                .op-v2.delete:hover { background: #f43f5e; color: white; }
+                .user-flex { display: flex; align-items: center; gap: 12px; font-weight: 500; }
+                .table-avatar { width: 32px; height: 32px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #e2e8f0; }
                 
-                .integrity-bar { width: 100px; height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; }
-                .integrity-bar .fill { height: 100%; background: #10b981; border-radius: 10px; }
+                .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+                .badge.admin { background: rgba(244, 63, 94, 0.1); color: #f43f5e; }
+                .badge.user { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+                .status-dot { color: #10b981; font-weight: 600; font-size: 0.85rem; }
+                .status-dot::before { content: '•'; margin-right: 6px; font-size: 1.2rem; }
+
+                .icon-action {
+                    background: transparent; border: none; padding: 8px; border-radius: 8px;
+                    color: var(--text-muted); cursor: pointer; transition: 0.2s;
+                }
+                .icon-action:hover { background: rgba(255,255,255,0.05); color: white; }
+                .icon-action.delete:hover { color: #f43f5e; background: rgba(244,63,94,0.1); }
+                .icon-action.edit:hover { color: #60a5fa; background: rgba(59,130,246,0.1); }
+
+                /* Books Grid - Horizontal Side Info Style */
+                .books-grid-modern {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+                    gap: 24px;
+                }
+                .book-card-item {
+                    background: var(--bg-card);
+                    border: 1px solid var(--border);
+                    border-radius: 20px;
+                    overflow: hidden;
+                    transition: 0.3s;
+                    display: flex; /* Horizontal Layout */
+                    padding: 20px;
+                    gap: 20px;
+                }
+                .book-card-item:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+                
+                .card-cover { 
+                    width: 120px; 
+                    height: 160px; 
+                    flex-shrink: 0; 
+                    border-radius: 12px;
+                    overflow: hidden;
+                }
+                .card-cover img { width: 100%; height: 100%; object-fit: cover; }
+                
+                .card-info { 
+                    flex: 1; 
+                    display: flex; 
+                    flex-direction: column;
+                    justify-content: space-between;
+                    padding: 0; /* padding handled by parent gap/padding */
+                }
+                .card-info h4 { margin: 0 0 6px; font-size: 1.1rem; color: #f1f5f9; font-weight: 700; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; }
+                .card-info p { margin: 0; color: var(--text-muted); font-size: 0.9rem; font-weight: 500; }
+                
+                .card-meta { display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; }
+                .cat-tag { font-size: 0.75rem; background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 8px; color: #cbd5e1; font-weight: 600; }
+
+                /* Modals */
+                .modal-backdrop {
+                    position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+                    display: flex; align-items: center; justify-content: center; z-index: 1000;
+                }
+                .modal-content {
+                    background: #1e293b; width: 100%; max-width: 480px;
+                    border-radius: 24px; padding: 32px; border: 1px solid var(--border);
+                    box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+                }
+                .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+                .modal-head h3 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+                .modal-head button { background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+                
+                .input-group { margin-bottom: 20px; }
+                .input-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; font-weight: 500; color: #cbd5e1; }
+                .input-group input, .input-group select {
+                    width: 100%; padding: 12px 16px; background: #0f172a;
+                    border: 1px solid var(--border); border-radius: 12px;
+                    color: white; outline: none; transition: 0.2s;
+                }
+                .input-group input:focus, .input-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }
+                
+                .input-group.check { display: flex; align-items: center; gap: 12px; }
+                .input-group.check input { width: 20px; height: 20px; }
+                .input-group.check label { margin: 0; }
+
+                .submit-btn {
+                    background: var(--primary); color: white; border: none;
+                    padding: 14px; border-radius: 12px; font-weight: 600;
+                    cursor: pointer; width: 100%; transition: 0.2s;
+                    font-size: 1rem;
+                }
+                .submit-btn:hover { background: var(--primary-hover); }
+
+                /* Mobile Menu */
+                .mobile-toggle { display: none; background: transparent; border: none; color: white; cursor: pointer; padding: 4px; }
+                .mobile-menu {
+                    background: rgba(15, 23, 42, 0.98);
+                    border-bottom: 1px solid var(--border);
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    backdrop-filter: blur(12px);
+                    animation: slideDown 0.3s ease-out;
+                }
+                @keyframes slideDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+                
+                .mobile-nav-link {
+                    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+                    border-radius: 12px; color: var(--text-muted); text-decoration: none;
+                    font-weight: 500; transition: 0.2s;
+                }
+                .mobile-nav-link:hover { background: rgba(255,255,255,0.05); color: white; }
+                .mobile-nav-link.active { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+
+                /* Responsive Tables */
+                .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+                .modern-table { min-width: 600px; } /* Ensure table doesn't squish too much */
+
+                @media (max-width: 900px) {
+                    .desktop-only { display: none !important; }
+                    .mobile-toggle { display: block; }
+                    .stats-row { grid-template-columns: 1fr; gap: 16px; }
+                    .books-grid-modern { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+                }
+
+                /* Skeleton Loader */
+                .skeleton-loader { animation: fadeIn 0.5s ease; }
+                .sk-card { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); }
+                .sk-table-card { height: 400px; }
+                
+                .sk-title { width: 40%; height: 40px; background: rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 12px; }
+                .sk-title-sm { width: 25%; height: 28px; background: rgba(255,255,255,0.1); border-radius: 8px; }
+                .sk-subtitle { width: 25%; height: 16px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+                
+                .sk-icon { width: 60px; height: 60px; border-radius: 16px; background: rgba(255,255,255,0.1); }
+                .sk-content { flex: 1; }
+                .sk-h3 { width: 50%; height: 32px; background: rgba(255,255,255,0.1); border-radius: 6px; margin-bottom: 8px; }
+                .sk-p { width: 30%; height: 14px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+
+                .sk-rows { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
+                .sk-row { display: flex; gap: 20px; align-items: center; }
+                .sk-cell { height: 20px; background: rgba(255,255,255,0.05); border-radius: 4px; flex: 1; }
+                .sk-cell.wide { flex: 2; }
+
+                .sk-title, .sk-subtitle, .sk-icon, .sk-h3, .sk-p, .sk-cell, .sk-title-sm {
+                    position: relative;
+                    overflow: hidden;
+                }
+                .sk-title::after, .sk-subtitle::after, .sk-icon::after, .sk-h3::after, .sk-p::after, .sk-cell::after, .sk-title-sm::after {
+                    content: '';
+                    position: absolute;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+                    transform: translateX(-100%);
+                    animation: shimmer 1.5s infinite;
+                }
+
+                @keyframes shimmer {
+                    100% { transform: translateX(100%); }
+                }
+
+                @media (max-width: 600px) {
+                    .nav-container { padding: 0 16px; }
+                    .admin-main { padding: 16px; }
+                    .books-grid-modern { grid-template-columns: 1fr; }
+                    .stat-card { padding: 20px; }
+                    .stat-data h3 { font-size: 2rem; }
+                    .view-header h1 { font-size: 1.5rem; }
+                    .view-header.with-action { flex-direction: column; align-items: flex-start; gap: 16px; }
+                    .primary-btn { width: 100%; justify-content: center; }
+                }
             `}</style>
         </div>
     );

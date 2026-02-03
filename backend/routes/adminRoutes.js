@@ -21,5 +21,7 @@ router.delete('/books/:id', adminController.deleteBook);
 // Category Management
 router.get('/categories', adminController.getAllCategories);
 router.post('/categories', adminController.createCategory);
+router.put('/categories/:id', adminController.updateCategory);
+router.delete('/categories/:id', adminController.deleteCategory);
 
 module.exports = router;

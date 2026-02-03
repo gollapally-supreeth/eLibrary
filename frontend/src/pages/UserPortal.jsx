@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -9,11 +9,13 @@ import {
     RefreshCw,
     Calendar,
     Mail,
+    LogOut,
 
     Palette,
     User as UserIcon,
     ChevronDown
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const UserPortal = ({ section }) => {
     const [user, setUser] = useState(null);
@@ -32,6 +34,34 @@ const UserPortal = ({ section }) => {
     const [editUsername, setEditUsername] = useState('');
     const [editPassword, setEditPassword] = useState('');
     const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        try {
+            await axios.post('/api/auth/logout');
+            // Assuming successful logout clears session/cookie
+            navigate('/login');
+        } catch (err) {
+            console.error('Logout failed:', err);
+            // Even if api fails, force client nav
+            navigate('/login');
+        }
+    };
+
+    // Handle click outside to close dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsSortDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     const AVATAR_STYLES = [
         'adventurer', 'adventurer-neutral', 'avataaars', 'big-smile',
@@ -45,12 +75,14 @@ const UserPortal = ({ section }) => {
 
     const fetchData = async () => {
         setLoading(true);
+        const minLoadTime = new Promise(resolve => setTimeout(resolve, 800));
         try {
             const [booksRes, favRes, userRes, catsRes] = await Promise.all([
                 axios.get('/api/books'),
                 axios.get('/api/books/favorites'),
                 axios.get('/api/user/profile'),
-                axios.get('/api/books/categories')
+                axios.get('/api/books/categories'),
+                minLoadTime
             ]);
 
             setBooks(Array.isArray(booksRes.data) ? booksRes.data : []);
@@ -181,9 +213,108 @@ const UserPortal = ({ section }) => {
 
     if (loading) {
         return (
-            <div className="portal-loading">
-                <div className="loading-spinner"></div>
-                <p>Loading library...</p>
+            <div className="minimal-portal portal-loading-skeleton">
+                <div className="dashboard-section">
+                    {/* Header Skeleton */}
+                    <div className="sk-welcome">
+                        <div className="sk-h1"></div>
+                        <div className="sk-p-sm"></div>
+                    </div>
+
+                    {/* Stats Skeleton */}
+                    <div className="stats-grid">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="stat-card sk-stat-card">
+                                <div className="sk-icon-lg"></div>
+                                <div className="sk-content">
+                                    <div className="sk-h2"></div>
+                                    <div className="sk-p-xs"></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Quick Actions Skeleton */}
+                    <div className="sk-actions">
+                        <div className="sk-h2-sm"></div>
+                        <div className="action-buttons">
+                            <div className="action-btn sk-btn"></div>
+                            <div className="action-btn sk-btn"></div>
+                        </div>
+                    </div>
+
+                    {/* Featured/Grid Skeleton */}
+                    <div className="featured-section" style={{ marginTop: '40px' }}>
+                        <div className="section-header">
+                            <div className="sk-h1-md"></div>
+                            <div className="sk-p-sm"></div>
+                        </div>
+                        <div className="books-grid">
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className="book-card-premium sk-book-card">
+                                    <div className="sk-book-cover"></div>
+                                    <div className="sk-book-info">
+                                        <div className="sk-badge"></div>
+                                        <div className="sk-h3-sm"></div>
+                                        <div className="sk-p-xs"></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <style>{`
+                /* Shared Styles for Portal */
+                .minimal-portal { width: 100%; max-width: 1400px; margin: 0 auto; }
+                .portal-loading-skeleton { padding: 40px 20px; animation: fadeIn 0.5s ease; }
+                .sk-welcome { margin-bottom: 30px; }
+                .sk-h1 { width: 400px; height: 48px; background: rgba(255,255,255,0.1); border-radius: 12px; margin-bottom: 12px; }
+                .sk-p-sm { width: 250px; height: 18px; background: rgba(255,255,255,0.05); border-radius: 6px; }
+                .sk-stat-card { display: flex; align-items: center; gap: 20px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 32px; height: 156px; }
+                .sk-icon-lg { width: 70px; height: 70px; border-radius: 20px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+                .sk-content { flex: 1; }
+                .sk-h2 { width: 60px; height: 36px; background: rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 8px; }
+                .sk-p-xs { width: 80px; height: 14px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+                .sk-actions { margin-top: 20px; }
+                .sk-h2-sm { width: 180px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 20px; }
+                .action-buttons { display: flex; gap: 16px; }
+                .sk-btn { width: 160px; height: 50px; background: rgba(255,255,255,0.08); border-radius: 14px; }
+                .featured-section { margin-top: 40px; } 
+                .section-header { margin-bottom: 24px; }
+                .sk-h1-md { width: 300px; height: 36px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-bottom: 10px; }
+                .books-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px; }
+                .sk-book-card { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; overflow: hidden; aspect-ratio: 2/3; display: flex; flex-direction: column; }
+                .sk-book-cover { width: 100%; flex: 1; background: rgba(255,255,255,0.05); }
+                .sk-book-info { padding: 20px; border-top: 1px solid rgba(255,255,255,0.05); height: 100px; display: flex; flex-direction: column; gap: 10px; }
+                .sk-badge { width: 80px; height: 20px; background: rgba(255,255,255,0.08); border-radius: 12px; }
+                .sk-h3-sm { width: 90%; height: 20px; background: rgba(255,255,255,0.1); border-radius: 6px; }
+
+                /* Shimmer Animation */
+                .sk-h1, .sk-p-sm, .sk-icon-lg, .sk-h2, .sk-p-xs, .sk-h2-sm, .sk-btn, .sk-h1-md, .sk-book-cover, .sk-badge, .sk-h3-sm {
+                    position: relative;
+                    overflow: hidden;
+                }
+                .sk-h1::after, .sk-p-sm::after, .sk-icon-lg::after, .sk-h2::after, .sk-p-xs::after, .sk-h2-sm::after, .sk-btn::after, .sk-h1-md::after, .sk-book-cover::after, .sk-badge::after, .sk-h3-sm::after {
+                    content: '';
+                    position: absolute;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+                    transform: translateX(-100%);
+                    animation: shimmer 1.5s infinite;
+                }
+                @keyframes shimmer { 100% { transform: translateX(100%); } }
+                
+                @media (max-width: 600px) {
+                    .sk-h1 { width: 70%; }
+                    .stats-grid { grid-template-columns: 1fr; }
+                    .books-grid { grid-template-columns: 1fr; }
+                }
+                
+                /* Dashboard Styles (Duplicate for Loading State if needed) */
+                .dashboard-section { display: flex; flex-direction: column; gap: 40px; }
+                .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; }
+            `}</style>
             </div>
         );
     }
@@ -224,7 +355,7 @@ const UserPortal = ({ section }) => {
                                 <Filter size={28} />
                             </div>
                             <div className="stat-content">
-                                <h3>{categories.length - 1}</h3>
+                                <h3>{categoriesList.length}</h3>
                                 <p>Categories</p>
                             </div>
                         </div>
@@ -343,11 +474,10 @@ const UserPortal = ({ section }) => {
                             />
                         </div>
 
-                        <div className="custom-select-container">
+                        <div className="custom-select-container" ref={dropdownRef}>
                             <button
                                 className={`custom-select-trigger ${isSortDropdownOpen ? 'open' : ''}`}
                                 onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
-                                onBlur={() => setTimeout(() => setIsSortDropdownOpen(false), 200)}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Filter size={16} />
@@ -487,6 +617,11 @@ const UserPortal = ({ section }) => {
                                         <span className="p-stat-label">Favorites</span>
                                     </div>
                                 </div>
+
+                                <button onClick={handleLogout} className="logout-btn-mobile">
+                                    <LogOut size={18} />
+                                    <span>Log Out</span>
+                                </button>
                             </div>
 
                             {/* Right Side: Details or Edit Form */}
@@ -569,31 +704,46 @@ const UserPortal = ({ section }) => {
                 }
 
                 /* Loading */
-                .portal-loading {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    min-height: 60vh;
-                    gap: 20px;
-                }
+                /* Skeleton Loader */
+                .portal-loading-skeleton { padding: 40px 20px; animation: fadeIn 0.5s ease; }
+                .sk-welcome { margin-bottom: 30px; }
+                .sk-h1 { width: 400px; height: 48px; background: rgba(255,255,255,0.1); border-radius: 12px; margin-bottom: 12px; }
+                .sk-p-sm { width: 250px; height: 18px; background: rgba(255,255,255,0.05); border-radius: 6px; }
+                
+                .sk-stat-card { display: flex; align-items: center; gap: 20px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); }
+                .sk-icon-lg { width: 70px; height: 70px; border-radius: 20px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+                .sk-h2 { width: 60px; height: 36px; background: rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 8px; }
+                .sk-p-xs { width: 80px; height: 14px; background: rgba(255,255,255,0.05); border-radius: 4px; }
 
-                .loading-spinner {
-                    width: 50px;
-                    height: 50px;
-                    border: 3px solid rgba(99, 102, 241, 0.2);
-                    border-top-color: #6366f1;
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                }
+                .sk-actions { margin-top: 20px; }
+                .sk-h2-sm { width: 180px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 20px; }
+                .sk-btn { width: 160px; height: 50px; background: rgba(255,255,255,0.08); border-radius: 14px; border: none; }
 
-                @keyframes spin {
-                    to { transform: rotate(360deg); }
-                }
+                .sk-h1-md { width: 300px; height: 36px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-bottom: 10px; }
+                
+                .sk-book-card { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+                .sk-book-cover { width: 100%; aspect-ratio: 2/3; background: rgba(255,255,255,0.05); }
+                .sk-book-info { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+                .sk-badge { width: 80px; height: 20px; background: rgba(255,255,255,0.08); border-radius: 12px; }
+                .sk-h3-sm { width: 90%; height: 20px; background: rgba(255,255,255,0.1); border-radius: 6px; }
 
-                .portal-loading p {
-                    color: #94a3b8;
-                    font-size: 1rem;
+                /* Shimmer Animation */
+                .sk-h1, .sk-p-sm, .sk-icon-lg, .sk-h2, .sk-p-xs, .sk-h2-sm, .sk-btn, .sk-h1-md, .sk-book-cover, .sk-badge, .sk-h3-sm {
+                    position: relative;
+                    overflow: hidden;
+                }
+                .sk-h1::after, .sk-p-sm::after, .sk-icon-lg::after, .sk-h2::after, .sk-p-xs::after, .sk-h2-sm::after, .sk-btn::after, .sk-h1-md::after, .sk-book-cover::after, .sk-badge::after, .sk-h3-sm::after {
+                    content: '';
+                    position: absolute;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+                    transform: translateX(-100%);
+                    animation: shimmer 1.5s infinite;
+                }
+                
+                @media (max-width: 600px) {
+                    .sk-h1 { width: 70%; }
+                    .stats-grid { grid-template-columns: 1fr; }
                 }
 
                 /* Dashboard */
@@ -880,7 +1030,7 @@ const UserPortal = ({ section }) => {
                     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3),
                                 0 10px 10px -5px rgba(0, 0, 0, 0.2),
                                 inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-                    z-index: 50;
+                    z-index: 1000;
                     animation: slideDown 0.2s ease-out;
                     overflow: hidden;
                 }
@@ -1297,6 +1447,31 @@ const UserPortal = ({ section }) => {
                     letter-spacing: 0.5px;
                 }
 
+                .logout-btn-mobile {
+                    margin-top: 24px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 12px 24px;
+                    background: rgba(239, 68, 68, 0.1);
+                    border: 1px solid rgba(239, 68, 68, 0.2);
+                    border-radius: 12px;
+                    color: #fca5a5;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    width: 100%;
+                    justify-content: center;
+                    max-width: 200px;
+                }
+
+                .logout-btn-mobile:hover {
+                    background: rgba(239, 68, 68, 0.2);
+                    border-color: rgba(239, 68, 68, 0.4);
+                    color: #fff;
+                    transform: translateY(-2px);
+                }
+
                 /* Right Column */
                 .profile-right-col {
                     flex: 1;
@@ -1459,8 +1634,12 @@ const UserPortal = ({ section }) => {
                 }
 
                 @media (max-width: 768px) {
+                    .minimal-portal {
+                        padding: 0 12px;
+                    }
+
                     .welcome-header h1 {
-                        font-size: 2rem;
+                        font-size: 1.6rem;
                     }
 
                     .stats-grid {
@@ -1468,19 +1647,79 @@ const UserPortal = ({ section }) => {
                     }
 
                     .books-grid {
-                        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 10px;
+                    }
+                    
+                    /* Smaller book cards for mobile */
+                    .book-info-premium {
+                        padding: 10px 8px; /* Reduced vertical padding */
+                    }
+                    
+                    .book-info-premium h3 {
+                        font-size: 0.75rem; /* Smaller font */
+                        line-height: 1.25;
+                        margin-bottom: 3px;
+                        -webkit-line-clamp: 2;
+                    }
+                    
+                    .book-info-premium .book-author {
+                        font-size: 0.7rem;
+                    }
+                    
+                    .book-category-badge {
+                        font-size: 0.55rem;
+                        margin-bottom: 3px;
+                    }
+
+                    /* Always visible favorite button on mobile */
+                    .favorite-btn-premium {
+                        width: 28px;
+                        height: 28px;
+                        top: 6px;
+                        right: 6px;
+                        opacity: 1 !important; /* Force visible */
+                        transform: translateY(0) !important; /* No hover animation needed */
+                        background: rgba(0, 0, 0, 0.4); /* Darker background for contrast */
+                        backdrop-filter: blur(4px);
+                    }
+
+                    .favorite-btn-premium svg {
+                        width: 14px;
+                        height: 14px;
                     }
 
                     .profile-glass-card {
-                        padding: 30px 20px;
+                        padding: 24px 16px;
                     }
                     
                     .filters-bar {
                         flex-direction: column;
+                        gap: 12px;
                     }
 
                     .search-box {
                         min-width: 100%;
+                        padding: 12px 16px;
+                    }
+
+                    .custom-select-container {
+                        width: 100%;
+                    }
+
+                    .custom-select-trigger {
+                        width: 100%;
+                        justify-content: space-between;
+                        padding: 12px 16px;
+                    }
+
+                    .action-buttons {
+                        flex-direction: column;
+                    }
+
+                    .action-btn {
+                        width: 100%;
+                        justify-content: center;
                     }
                 }
                 .avatar-wrapper-lg {

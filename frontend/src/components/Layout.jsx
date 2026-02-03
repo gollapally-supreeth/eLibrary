@@ -113,6 +113,25 @@ const Layout = ({ children }) => {
                 {children}
             </main>
 
+            {/* Mobile Bottom Navigation */}
+            <nav className="mobile-bottom-nav">
+                <NavLink to="/dashboard" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+                    <Home size={24} />
+                </NavLink>
+                <NavLink to="/books" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+                    <BookOpen size={24} />
+                </NavLink>
+                <NavLink to="/favorites" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+                    <Heart size={24} />
+                </NavLink>
+                <NavLink to="/categories" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+                    <Layers size={24} />
+                </NavLink>
+                <NavLink to="/profile" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+                    <UserIcon size={24} />
+                </NavLink>
+            </nav>
+
             <style>{`
                 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -587,29 +606,57 @@ const Layout = ({ children }) => {
                     margin-left: 120px;
                 }
 
+                /* Mobile Bottom Nav */
+                .mobile-bottom-nav {
+                    display: none;
+                    position: fixed;
+                    bottom: 20px;
+                    left: 20px;
+                    right: 20px;
+                    background: rgba(15, 23, 42, 0.9);
+                    backdrop-filter: blur(20px);
+                    -webkit-backdrop-filter: blur(20px);
+                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    border-radius: 24px;
+                    padding: 12px 20px;
+                    justify-content: space-between;
+                    align-items: center;
+                    z-index: 1000;
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6),
+                                0 0 0 1px rgba(99, 102, 241, 0.1) inset;
+                }
+
+                .mobile-nav-item {
+                    color: #94a3b8;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 16px;
+                    transition: all 0.3s;
+                }
+
+                .mobile-nav-item.active {
+                    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+                    color: white;
+                    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+                    transform: translateY(-4px);
+                }
+
                 @media (max-width: 768px) {
                     .minimal-sidebar {
-                        width: 80px;
-                    }
-                    
-                    .minimal-sidebar .logo-text,
-                    .minimal-sidebar .toggle-btn,
-                    .minimal-sidebar .nav-item span,
-                    .minimal-sidebar .categories-section,
-                    .minimal-sidebar .user-info,
-                    .minimal-sidebar .logout-btn span {
                         display: none;
                     }
-
-                    .minimal-sidebar .nav-item,
-                    .minimal-sidebar .logout-btn {
-                        justify-content: center;
-                        padding: 14px;
+                    
+                    .portal-main {
+                        margin-left: 0;
+                        padding: 30px 20px;
+                        padding-bottom: 120px; /* Space for bottom nav */
                     }
 
-                    .portal-main {
-                        margin-left: 80px;
-                        padding: 30px 20px;
+                    .mobile-bottom-nav {
+                        display: flex;
                     }
                 }
             `}</style>
