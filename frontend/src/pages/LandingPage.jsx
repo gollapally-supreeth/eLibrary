@@ -4,14 +4,12 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
-    MoveRight,
     Search,
     LayoutGrid,
     Heart,
     Library,
     UserCircle,
     SlidersHorizontal,
-    BookOpen,
     Github,
     Linkedin
 } from 'lucide-react';

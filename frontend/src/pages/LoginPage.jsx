@@ -10,7 +10,8 @@ import {
     BookOpen,
     Sparkles,
     Eye,
-    EyeOff
+    EyeOff,
+    Linkedin
 } from 'lucide-react';
 import gsap from 'gsap';
 
@@ -22,6 +23,7 @@ const LoginPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showForgotMessage, setShowForgotMessage] = useState(false);
     const navigate = useNavigate();
 
     const slidePanelRef = useRef(null);
@@ -147,6 +149,10 @@ const LoginPage = () => {
         }
     };
 
+    const handleForgotPassword = () => {
+        setShowForgotMessage(true);
+    };
+
     return (
         <div className="login-page">
             {/* Gradient Background */}
@@ -263,6 +269,18 @@ const LoginPage = () => {
                                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </button>
                                 </div>
+                                {isLogin && (
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={handleForgotPassword}
+                                            className="forgot-link"
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                                        >
+                                            Forgot Password?
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             <button type="submit" className="submit-btn" disabled={loading}>
@@ -288,6 +306,73 @@ const LoginPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Forgot Password Modal */}
+            {showForgotMessage && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 100,
+                    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '20px'
+                }}>
+                    <div style={{
+                        background: 'rgba(30, 41, 59, 0.9)', border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '24px', padding: '32px', maxWidth: '400px', width: '100%',
+                        textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                        position: 'relative'
+                    }}>
+                        <div style={{
+                            width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
+                            color: '#818cf8'
+                        }}>
+                            <Lock size={30} />
+                        </div>
+                        <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f1f5f9', marginBottom: '12px' }}>Recovery Support</h3>
+                        <p style={{ color: '#94a3b8', marginBottom: '24px', lineHeight: '1.6' }}>
+                            For security reasons, please contact the developer directly to recover your account.
+                        </p>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <a href="https://www.linkedin.com/in/gollapally-supreeth" target="_blank" rel="noopener noreferrer"
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                                    padding: '12px', borderRadius: '12px', background: '#0077b5', color: 'white',
+                                    textDecoration: 'none', fontWeight: 600, transition: 'transform 0.2s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                                <Linkedin size={20} />
+                                <span>Contact on LinkedIn</span>
+                            </a>
+                            <a href="mailto:contact@elibrary.com"
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                                    padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', color: 'white',
+                                    textDecoration: 'none', fontWeight: 600, border: '1px solid rgba(255,255,255,0.1)',
+                                    transition: 'background 0.2s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                            >
+                                <Mail size={20} />
+                                <span>via Email</span>
+                            </a>
+                        </div>
+
+                        <button
+                            onClick={() => setShowForgotMessage(false)}
+                            style={{
+                                marginTop: '24px', background: 'none', border: 'none', color: '#64748b',
+                                cursor: 'pointer', fontSize: '0.9rem'
+                            }}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 .login-page {
