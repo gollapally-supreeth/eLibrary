@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     Home,
@@ -25,8 +25,8 @@ const Layout = ({ children }) => {
 
         // Fetch user and categories
         Promise.all([
-            axios.get('/api/user/profile'),
-            axios.get('/api/books/categories')
+            api.get('/api/user/profile'),
+            api.get('/api/books/categories')
         ]).then(([userRes, catRes]) => {
             setUser(userRes.data);
             setCategories(catRes.data);
@@ -34,7 +34,7 @@ const Layout = ({ children }) => {
     }, []);
 
     const handleLogout = async () => {
-        await axios.post('/api/auth/logout');
+        await api.post('/api/auth/logout');
         navigate('/login');
     };
 

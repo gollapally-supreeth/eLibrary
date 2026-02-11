@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import {
     BookOpen,
     Heart,
@@ -39,7 +39,7 @@ const UserPortal = ({ section }) => {
 
     const handleLogout = async () => {
         try {
-            await axios.post('/api/auth/logout');
+            await api.post('/api/auth/logout');
             // Assuming successful logout clears session/cookie
             navigate('/login');
         } catch (err) {
@@ -78,10 +78,10 @@ const UserPortal = ({ section }) => {
         const minLoadTime = new Promise(resolve => setTimeout(resolve, 800));
         try {
             const [booksRes, favRes, userRes, catsRes] = await Promise.all([
-                axios.get('/api/books'),
-                axios.get('/api/books/favorites'),
-                axios.get('/api/user/profile'),
-                axios.get('/api/books/categories'),
+                api.get('/api/books'),
+                api.get('/api/books/favorites'),
+                api.get('/api/user/profile'),
+                api.get('/api/books/categories'),
                 minLoadTime
             ]);
 
@@ -106,10 +106,10 @@ const UserPortal = ({ section }) => {
             const isFav = favorites.includes(bookId);
             if (isFav) {
                 setFavorites(favorites.filter(id => id !== bookId));
-                await axios.delete(`/api/books/favorites/${bookId}`);
+                await api.delete(`/api/books/favorites/${bookId}`);
             } else {
                 setFavorites([...favorites, bookId]);
-                await axios.post(`/api/books/favorites/${bookId}`);
+                await api.post(`/api/books/favorites/${bookId}`);
             }
         } catch (err) {
             console.error('Error toggling favorite:', err);
@@ -120,7 +120,7 @@ const UserPortal = ({ section }) => {
         setIsUpdatingAvatar(true);
         try {
             const newSeed = Math.random().toString(36).substring(7);
-            await axios.put('/api/user/profile/avatar', { avatarSeed: newSeed });
+            await api.put('/api/user/profile/avatar', { avatarSeed: newSeed });
             setAvatarSeed(newSeed);
         } catch (err) {
             console.error('Error updating avatar:', err);
@@ -137,7 +137,7 @@ const UserPortal = ({ section }) => {
 
     const handleUpdateProfile = async () => {
         try {
-            await axios.put('/api/user/profile', { username: editUsername, password: editPassword });
+            await api.put('/api/user/profile', { username: editUsername, password: editPassword });
             setUser(prev => ({ ...prev, username: editUsername }));
             setIsEditing(false);
             setEditPassword('');

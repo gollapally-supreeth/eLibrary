@@ -1,5 +1,5 @@
 import React from 'react'
-import axios from 'axios'
+
 import { Routes, Route, Navigate } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
@@ -8,23 +8,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import Layout from './components/Layout'
 
 function App() {
-    // Global axios interceptor for 401 Unauthorized
-    React.useEffect(() => {
-        const interceptor = axios.interceptors.response.use(
-            (response) => response,
-            (error) => {
-                if (error.response && error.response.status === 401) {
-                    // Only redirect if not already on login page to avoid loops
-                    if (window.location.pathname !== '/login') {
-                        window.location.href = '/login';
-                    }
-                }
-                return Promise.reject(error);
-            }
-        );
-
-        return () => axios.interceptors.response.eject(interceptor);
-    }, []);
+    // Interceptor is now handled in services/api.js
 
     return (
         <Routes>

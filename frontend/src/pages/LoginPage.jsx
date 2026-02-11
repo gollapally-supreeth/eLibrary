@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import {
     Mail,
     Lock,
@@ -120,11 +120,14 @@ const LoginPage = () => {
         setError('');
         setLoading(true);
 
-        const url = isLogin ? '/api/auth/login' : '/api/auth/register';
+        const url = isLogin
+            ? '/api/auth/login'
+            : '/api/auth/register';
+
         const data = isLogin ? { email, password } : { username, email, password };
 
         try {
-            const res = await axios.post(url, data);
+            const res = await api.post(url, data);
 
             if (isLogin) {
                 // Login - backend returns { message, isAdmin, redirectUrl }

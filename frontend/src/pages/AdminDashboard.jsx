@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import {
     LayoutDashboard,
     Users,
@@ -59,13 +59,13 @@ const AdminDashboard = ({ section }) => {
             const minLoadTime = new Promise(resolve => setTimeout(resolve, 800)); // Enforce min 800ms load
             try {
                 const [statsRes, usersRes, booksRes, catsRes] = await Promise.all([
-                    axios.get('/api/admin/stats').catch(err => {
+                    api.get('/api/admin/stats').catch(err => {
                         console.error("Stats fetch failed", err);
                         return { data: { totalUsers: 0, totalBooks: 0, totalCategories: 0 } };
                     }),
-                    axios.get('/api/admin/users').catch(() => ({ data: [] })),
-                    axios.get('/api/books').catch(() => ({ data: [] })),
-                    axios.get('/api/books/categories').catch(() => ({ data: [] })),
+                    api.get('/api/admin/users').catch(() => ({ data: [] })),
+                    api.get('/api/books').catch(() => ({ data: [] })),
+                    api.get('/api/books/categories').catch(() => ({ data: [] })),
                     minLoadTime
                 ]);
                 if (isMounted) {
@@ -98,7 +98,7 @@ const AdminDashboard = ({ section }) => {
     }, [loading, section]);
 
     const handleLogout = async () => {
-        await axios.post('/api/auth/logout');
+        await api.post('/api/auth/logout');
         navigate('/login');
     };
 
@@ -106,7 +106,7 @@ const AdminDashboard = ({ section }) => {
     const handleDeleteUser = async (userId) => {
         if (!window.confirm('Delete this user?')) return;
         try {
-            await axios.delete(`/api/admin/users/${userId}`);
+            await api.delete(`/api/admin/users/${userId}`);
             setUsers(users.filter(u => (u._id || u.id) !== userId));
             setStats(prev => ({ ...prev, totalUsers: prev.totalUsers - 1 }));
         } catch (err) {
@@ -117,7 +117,7 @@ const AdminDashboard = ({ section }) => {
     const handleUserSubmit = async (e) => {
         e.preventDefault();
         try {
-            const res = await axios.post('/api/admin/users', userForm);
+            const res = await api.post('/api/admin/users', userForm);
             setUsers([...users, res.data]);
             setStats(prev => ({ ...prev, totalUsers: prev.totalUsers + 1 }));
             setShowUserModal(false);
@@ -132,7 +132,7 @@ const AdminDashboard = ({ section }) => {
     const handleDeleteBook = async (bookId) => {
         if (!window.confirm('Delete this book?')) return;
         try {
-            await axios.delete(`/api/admin/books/${bookId}`);
+            await api.delete(`/api/admin/books/${bookId}`);
             setBooks(books.filter(b => (b._id || b.id) !== bookId));
             setStats(prev => ({ ...prev, totalBooks: prev.totalBooks - 1 }));
         } catch (err) {
@@ -156,10 +156,10 @@ const AdminDashboard = ({ section }) => {
         e.preventDefault();
         try {
             if (editingBook) {
-                const res = await axios.put(`/api/admin/books/${editingBook._id || editingBook.id}`, bookForm);
+                const res = await api.put(`/api/admin/books/${editingBook._id || editingBook.id}`, bookForm);
                 setBooks(books.map(b => (b._id || b.id) === (editingBook._id || editingBook.id) ? res.data : b));
             } else {
-                const res = await axios.post('/api/admin/books', bookForm);
+                const res = await api.post('/api/admin/books', bookForm);
                 setBooks([...books, res.data]);
                 setStats(prev => ({ ...prev, totalBooks: prev.totalBooks + 1 }));
             }
@@ -176,7 +176,7 @@ const AdminDashboard = ({ section }) => {
     const handleDeleteCategory = async (catId) => {
         if (!window.confirm('Delete this category?')) return;
         try {
-            await axios.delete(`/api/admin/categories/${catId}`);
+            await api.delete(`/api/admin/categories/${catId}`);
             setCategories(categories.filter(c => (c._id || c.id) !== catId));
             setStats(prev => ({ ...prev, totalCategories: prev.totalCategories - 1 }));
         } catch (err) {
@@ -194,10 +194,10 @@ const AdminDashboard = ({ section }) => {
         e.preventDefault();
         try {
             if (editingCategory) {
-                const res = await axios.put(`/api/admin/categories/${editingCategory._id || editingCategory.id}`, categoryForm);
+                const res = await api.put(`/api/admin/categories/${editingCategory._id || editingCategory.id}`, categoryForm);
                 setCategories(categories.map(c => (c._id || c.id) === (editingCategory._id || editingCategory.id) ? res.data : c));
             } else {
-                const res = await axios.post('/api/admin/categories', categoryForm);
+                const res = await api.post('/api/admin/categories', categoryForm);
                 setCategories([...categories, res.data]);
                 setStats(prev => ({ ...prev, totalCategories: prev.totalCategories + 1 }));
             }

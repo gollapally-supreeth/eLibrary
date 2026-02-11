@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 
 const Sidebar = ({ isCollapsed, toggleSidebar, theme, toggleTheme }) => {
     const navigate = useNavigate();
 
     const handleLogout = async () => {
         try {
-            await axios.post('/api/auth/logout');
+            await api.post('/api/auth/logout');
             navigate('/login');
         } catch (err) {
             console.error('Logout failed', err);
