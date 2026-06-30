@@ -1,17 +1,20 @@
 export async function onRequest(context) {
   const url = new URL(context.request.url);
-
-  // Construct the target AWS URL using the incoming path and query parameters
   const targetUrl = `http://51.20.55.19:5000${url.pathname}${url.search}`;
-
-  // Strip out internal Cloudflare host headers to prevent Error 1003 blocks
+  
   const modifiedHeaders = new Headers(context.request.headers);
   modifiedHeaders.delete("host"); 
+
+  // Safely extract the body text if it's a POST/PUT request
+  let bodyContent = null;
+  if (["POST", "PUT", "PATCH"].includes(context.request.method)) {
+    bodyContent = await context.request.text();
+  }
 
   const modifiedRequest = new Request(targetUrl, {
     method: context.request.method,
     headers: modifiedHeaders,
-    body: context.request.body,
+    body: bodyContent,
     redirect: "manual"
   });
 
